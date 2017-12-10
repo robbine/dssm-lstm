@@ -60,11 +60,12 @@ class LSTMDSSM(object):
         self.docs_norm = [tf.reduce_sum(self.states_d[i], axis=1) for i in range(neg_num + 1)]
         self.prods = [tf.reduce_sum(tf.multiply(self.states_q, self.states_d[i]), axis=1) for i in range(neg_num + 1)]
         self.sims = [(self.prods[i] / (self.queries_norm * self.docs_norm[i])) for i in range(neg_num + 1)]  # shape: (neg_num + 1)*batch
-        self.sims = tf.transpose(tf.convert_to_tensor(self.sims))  # shape: batch*(neg_num + 1)
-        self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
-        self.sims = self.sims * self.gamma
-        self.prob = tf.nn.softmax(self.sims)
+        self.sims = tf.convert_to_tensor(self.sims)
+        # self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
+        # self.sims = self.sims * self.gamma
+        self.prob = tf.transpose(tf.nn.softmax(self.sims, dim=0))  # shape: batch*(neg_num + 1)
         self.hit_prob = tf.slice(self.prob, [0, 0], [-1, 1])
+
         self.loss = -tf.reduce_mean(tf.log(self.hit_prob))
 
         self.params = tf.trainable_variables()
