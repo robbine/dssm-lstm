@@ -63,8 +63,8 @@ class LSTMDSSM(object):
         self.sims = tf.convert_to_tensor(self.sims)
         # self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
         # self.sims = self.sims * self.gamma
-        self.prob = tf.transpose(tf.nn.softmax(self.sims, dim=0))  # shape: batch*(neg_num + 1)
-        self.hit_prob = tf.slice(self.prob, [0, 0], [-1, 1])
+        self.prob = tf.nn.softmax(self.sims, dim=0)  # shape: (neg_num + 1)*batch
+        self.hit_prob = tf.transpose(self.prob[0])
 
         self.loss = -tf.reduce_mean(tf.log(self.hit_prob))
 
@@ -86,5 +86,5 @@ class LSTMDSSM(object):
                       self.docs: docs['texts'],
                       self.docs_length: docs['texts_length']}
 
-        output_feed = [self.loss, self.update, self.states_q, self.states_d, self.queries_norm, self.docs_norm, self.prods, self.sims, self.gamma, self.prob, self.hit_prob]
+        output_feed = [self.loss, self.update, self.states_q, self.states_d, self.queries_norm, self.docs_norm, self.prods, self.sims, self.prob, self.hit_prob]
         return session.run(output_feed, input_feed)
