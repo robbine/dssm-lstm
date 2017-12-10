@@ -56,13 +56,13 @@ class LSTMDSSM(object):
                                          scope="simple_lstm_cell_query")[1][1]  # shape: batch*num_units
         self.states_d = [dynamic_rnn(self.cell_d, self.embed_docs[i], self.docs_length[i], dtype=tf.float32,
                                             scope="simple_lstm_cell_doc")[1][1] for i in range(neg_num + 1)]  # shape: (neg_num + 1)*batch*num_units
-        self.queries_norm = tf.reduce_sum(self.states_q, axis=1)
-        self.docs_norm = [tf.reduce_sum(self.states_d[i], axis=1) for i in range(neg_num + 1)]
+        self.queries_norm = tf.sqrt(tf.reduce_sum(tf.square(self.states_q), axis=1))
+        self.docs_norm = [tf.sqrt(tf.reduce_sum(tf.square(self.states_d[i]), axis=1)) for i in range(neg_num + 1)]
         self.prods = [tf.reduce_sum(tf.multiply(self.states_q, self.states_d[i]), axis=1) for i in range(neg_num + 1)]
         self.sims = [(self.prods[i] / (self.queries_norm * self.docs_norm[i])) for i in range(neg_num + 1)]  # shape: (neg_num + 1)*batch
         self.sims = tf.convert_to_tensor(self.sims)
-        # self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
-        # self.sims = self.sims * self.gamma
+        self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
+        self.sims = self.sims * self.gamma
         self.prob = tf.nn.softmax(self.sims, dim=0)  # shape: (neg_num + 1)*batch
         self.hit_prob = tf.transpose(self.prob[0])
 
