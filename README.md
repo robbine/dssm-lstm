@@ -2,4 +2,4 @@ data: https://www.kaggle.com/c/quora-question-pairs/data, only use train.csv(ren
 
 word vector: glove.6B(300d)
 
-put them under data dir
+put them under data dir and run pre_procession.py
