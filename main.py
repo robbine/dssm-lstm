@@ -9,6 +9,7 @@ from itertools import chain
 import os
 import math
 from model import LSTMDSSM, _START_VOCAB
+import csv
 
 random.seed(1229)
 
@@ -54,8 +55,8 @@ def build_vocab(path, data):
     print("Loading word vectors...")
     embed = np.random.normal(0.0, np.sqrt(1. / (FLAGS.embed_units)), [len(vocab_list), FLAGS.embed_units])
     # debug
-    # embed = np.array(embed, dtype=np.float32)
-    # return vocab_list, embed
+    embed = np.array(embed, dtype=np.float32)
+    return vocab_list, embed
     with open(os.path.join(path, 'vector.txt')) as fp:
         while True:
             line = fp.readline()
@@ -111,6 +112,27 @@ def train(model, sess, queries, docs):
     return loss / count
 
 
+def test(model, sess, queries, docs, ground_truths):
+    st, ed, loss = 0, 0, .0
+    lq = len(queries) / (FLAGS.neg_num + 1)
+    count = 0
+    while ed < lq:
+        st, ed = ed, ed + FLAGS.batch_size if ed + FLAGS.batch_size < lq else lq
+        batch_queries = gen_batch_data(queries[st:ed])
+        batch_docs = gen_batch_data(docs[st * (FLAGS.neg_num + 1):ed * (FLAGS.neg_num + 1)])
+        texts = []
+        texts_length = []
+        for i in range(FLAGS.neg_num + 1):
+            texts.append(batch_docs['texts'][i::FLAGS.neg_num + 1])
+            texts_length.append(batch_docs['texts_length'][i::FLAGS.neg_num + 1])
+        batch_docs['texts'] = texts
+        batch_docs['texts_length'] = texts_length
+        loss += model.test_step(sess, batch_queries, batch_docs, ground_truths[st:ed])
+        count += 1
+
+    return loss / count
+
+
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 with tf.Session(config=config) as sess:
@@ -119,6 +141,15 @@ with tf.Session(config=config) as sess:
         data_queries = load_data(FLAGS.data_dir, 'queries.txt')
         data_docs = load_data(FLAGS.data_dir, 'docs.txt')
         vocab, embed = build_vocab(FLAGS.data_dir, data_queries + data_docs)
+
+        # test data
+        test_queries = load_data(FLAGS.data_dir, 'test_queries.txt')
+        test_docs = load_data(FLAGS.data_dir, 'test_docs.txt')
+        test_docs = np.repeat(test_docs, FLAGS.neg_num + 1)
+        ground_truths = []
+        with open(os.path.join(FLAGS.data_dir, 'test_ground_truths.txt')) as f:
+            for row in f:
+                ground_truths.append(int(row.strip('\n')))
 
         model = LSTMDSSM(
             FLAGS.units,
@@ -137,6 +168,9 @@ with tf.Session(config=config) as sess:
                                               constant_op.constant(list(range(FLAGS.symbols)), dtype=tf.int64))
             sess.run(op_in)
 
+        # debug
+        test_loss = test(model, sess, test_queries, test_docs, ground_truths)
+
         summary_writer = tf.summary.FileWriter('%s/log' % FLAGS.train_dir, sess.graph)
         total_train_time = 0.0
         while model.epoch.eval() < FLAGS.epoch:
@@ -149,17 +183,24 @@ with tf.Session(config=config) as sess:
             data_docs = np.reshape(data_docs, len(data_queries) * (FLAGS.neg_num + 1))
             start_time = time.time()
             loss = train(model, sess, data_queries, data_docs)
-
             epoch_time = time.time() - start_time
             total_train_time += epoch_time
 
+            # test loss
+            test_loss = test(model, sess, test_queries, test_docs, ground_truths)
+
             summary = tf.Summary()
             summary.value.add(tag='loss/train', simple_value=loss)
+            summary.value.add(tag='loss/test', simple_value=test_loss)
             cur_lr = model.learning_rate.eval()
             summary.value.add(tag='lr/train', simple_value=cur_lr)
             summary_writer.add_summary(summary, epoch)
             model.saver.save(sess, '%s/checkpoint' % FLAGS.train_dir, global_step=model.global_step)
-            print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f" % (
-            epoch, cur_lr, epoch_time, loss))
+            print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f test loss %.8f" % (
+            epoch, cur_lr, epoch_time, loss, test_loss))
         with open(os.path.join(FLAGS.train_dir, FLAGS.time_log_path), 'a') as fp:
-            fp.writelines(['total training time: %f' % total_train_time])
+            fp.writelines(['total training time: %f\n' % total_train_time, 'last test loss: %.8f' % test_loss])
+
+
+
+

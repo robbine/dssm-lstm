@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow.python.ops.nn import dynamic_rnn
 from tensorflow.contrib.lookup.lookup_ops import MutableHashTable
 from cells import SimpleLSTMCell
+import math
 
 PAD_ID = 0
 UNK_ID = 1
@@ -88,3 +89,26 @@ class LSTMDSSM(object):
 
         output_feed = [self.loss, self.update, self.states_q, self.states_d, self.queries_norm, self.docs_norm, self.prods, self.sims, self.prob, self.hit_prob]
         return session.run(output_feed, input_feed)
+
+    def test_step(self, session, queries, docs, ground_truths):
+        input_feed = {self.queries: queries['texts'],
+                      self.queries_length: queries['texts_length'],
+                      self.docs: docs['texts'],
+                      self.docs_length: docs['texts_length']}
+        output_feed = [self.sims]
+        scores = (session.run(output_feed, input_feed)[0][0] + 1) / 2
+        l = len(ground_truths)
+        loss = 0
+        for i in range(l):
+            predict = scores[i]
+            ground_truth = ground_truths[i]
+            predict = max([min([predict, 1 - 1e-15]), 1e-15])
+            if ground_truth == 0:
+                loss += math.log(1 - predict)
+            else:
+                loss += math.log(predict)
+        return -loss / l
+
+
+
+

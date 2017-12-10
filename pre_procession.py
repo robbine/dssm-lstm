@@ -23,7 +23,7 @@ def analyze_dataset():
             iter += 1
             print("No.%d" % iter)
     # debug
-    print("Finished reading. Wtring...")
+    print("Finished reading. Writing...")
     with open(os.path.join(data_dir, 'dataset_info.txt'), 'w') as f:
         for idx, values in idxs.iteritems():
             f.write('similar to ' + str(idx) + ': ' + ','.join(str(v) for v in values) + '\n')
@@ -76,10 +76,16 @@ def create_dataset():
 
     random.shuffle(dis_similar)
     test_lines = test_lines + dis_similar[:int(test_num / 2)]
+    test_queries = [(' '.join(word_tokenize(row[3])) + '\n') for row in test_lines]
+    test_docs = [(' '.join(word_tokenize(row[4])) + '\n') for row in test_lines]
+    test_ground_truths = [(row[5] + '\n') for row in test_lines]
 
-    with open(os.path.join(data_dir, 'test.csv'), 'w') as f:
-        writer = csv.writer(f)
-        writer.writerows(test_lines)
+    with open(os.path.join(data_dir, 'test_queries.txt'), 'w') as f:
+        f.writelines(test_queries)
+    with open(os.path.join(data_dir, 'test_docs.txt'), 'w') as f:
+        f.writelines(test_docs)
+    with open(os.path.join(data_dir, 'test_ground_truths.txt'), 'w') as f:
+        f.writelines(test_ground_truths)
 
 
 if __name__ == '__main__':
