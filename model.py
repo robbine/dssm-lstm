@@ -22,10 +22,8 @@ class LSTMDSSM(object):
                  gradient_clip_threshold=5.0):
         self.queries = tf.placeholder(dtype=tf.string, shape=[None, None])  # shape: batch*len
         self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None])  # shape: batch
-        self._docs = tf.placeholder(dtype=tf.string, shape=[None, neg_num + 1, None])  # shape: batch*(neg_num + 1)*len
-        self._docs_length = tf.placeholder(dtype=tf.int32, shape=[None, neg_num + 1])  # shape: batch*(neg_num + 1)
-        self.docs = tf.transpose(self._docs, [1, 0, 2])  # shape: (neg_num + 1)*batch*len
-        self.docs_length = tf.transpose(self._docs_length)  # shape: batch*(neg_num + 1)
+        self.docs = tf.placeholder(dtype=tf.string, shape=[neg_num + 1, None, None])  # shape: (neg_num + 1)*batch*len
+        self.docs_length = tf.placeholder(dtype=tf.int32, shape=[neg_num + 1, None])  # shape: batch*(neg_num + 1)
 
         self.word2index = MutableHashTable(
             key_dtype=tf.string,
@@ -84,8 +82,8 @@ class LSTMDSSM(object):
     def train_step(self, session, queries, docs):
         input_feed = {self.queries: queries['texts'],
                       self.queries_length: queries['texts_length'],
-                      self._docs: docs['texts'],
-                      self._docs_length: docs['texts_length']}
+                      self.docs: docs['texts'],
+                      self.docs_length: docs['texts_length']}
 
         output_feed = [self.loss, self.update, self.states_q, self.states_d, self.queries_norm, self.docs_norm, self.prods, self.sims, self.gamma, self.prob, self.hit_prob]
         return session.run(output_feed, input_feed)

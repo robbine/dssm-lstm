@@ -88,20 +88,27 @@ def gen_batch_data(data):
 def train(model, sess, queries, docs):
     st, ed, loss = 0, 0, .0
     lq = len(queries) / (FLAGS.neg_num + 1)
+    count = 0
     while ed < lq:
         st, ed = ed, ed + FLAGS.batch_size if ed + FLAGS.batch_size < lq else lq
         batch_queries = gen_batch_data(queries[st:ed])
         batch_docs = gen_batch_data(docs[st*(FLAGS.neg_num + 1):ed*(FLAGS.neg_num + 1)])
-        lbq = len(batch_queries['texts'])
-        batch_docs['texts'] = batch_docs['texts'].reshape(lbq, FLAGS.neg_num + 1, -1)
-        batch_docs['texts_length'] = batch_docs['texts_length'].reshape(lbq, FLAGS.neg_num + 1)
+        texts = []
+        texts_length = []
+        for i in range(FLAGS.neg_num + 1):
+            texts.append(batch_docs['texts'][i::FLAGS.neg_num + 1])
+            texts_length.append(batch_docs['texts_length'][i::FLAGS.neg_num + 1])
+        batch_docs['texts'] = texts
+        batch_docs['texts_length'] = texts_length
         outputs = model.train_step(sess, batch_queries, batch_docs)
+        count += 1
+        # debug
         if math.isnan(outputs[0]) or math.isinf(outputs[0]):
             print('nan/inf detected. ')
         loss += outputs[0]
     sess.run([model.epoch_add_op])
 
-    return loss / len(queries)
+    return loss / count
 
 
 config = tf.ConfigProto()
