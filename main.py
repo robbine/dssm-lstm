@@ -169,7 +169,7 @@ with tf.Session(config=config) as sess:
             sess.run(op_in)
 
         # debug
-        test_loss = test(model, sess, test_queries, test_docs, ground_truths)
+        # test_loss = test(model, sess, test_queries, test_docs, ground_truths)
 
         summary_writer = tf.summary.FileWriter('%s/log' % FLAGS.train_dir, sess.graph)
         total_train_time = 0.0
