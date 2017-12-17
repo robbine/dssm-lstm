@@ -1,6 +1,6 @@
 data: https://www.kaggle.com/c/quora-question-pairs/data, only use train.csv.
 
-I generated training set by randomly sampling 10,000 queries from train.csv, for each query I randomly sampled 1 similar question and 4 negative samples.For test I randomly sampled 1250 pairs of questions and 1250 dissimilar questions from the rest of train.csv.
+I generated training set by randomly sampling 10,000 queries from train.csv, for each query I randomly sampled 1 similar question and 4 negative samples. For test I randomly sampled 1250 pairs of questions and 1250 pairs of dissimilar questions from the rest of train.csv.
 
 word vector: glove.6B(300d)
 
