@@ -1,3 +1,7 @@
+The LSTM-DSSM model refering to the paper: Deep Sentence Embedding Using Long Short-Term Memory Networks: Analysis and Application to Information Retrieval.
+
+papaer available at: https://arxiv.org/abs/1502.06922
+
 data: https://www.kaggle.com/c/quora-question-pairs/data, only use train.csv.
 
 I generated training set by randomly sampling 10,000 queries from train.csv, for each query I randomly sampled 1 similar question and 4 negative samples. For test I randomly sampled 1250 pairs of similar questions and 1250 pairs of dissimilar questions from the rest of train.csv.
