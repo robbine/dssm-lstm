@@ -221,6 +221,9 @@ with tf.Session(config=config) as sess:
             else:
                 print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f" % (
                     epoch, cur_lr, epoch_time, loss, validate_loss))
+            # debug       
+            test_loss = test(model, sess, test_queries, test_docs, test_ground_truths)
+            print("test loss for debug: %.8f" % test_loss)
 
             if loss > max(pre_losses):
                 op = tf.assign(model.learning_rate, cur_lr * 0.5)
@@ -228,7 +231,4 @@ with tf.Session(config=config) as sess:
             pre_losses = pre_losses[1:] + [loss]
         with open(os.path.join(FLAGS.train_dir, FLAGS.time_log_path), 'a') as fp:
             fp.writelines(['total training time: %f\n' % total_train_time, 'last test loss: %.8f' % test_loss])
-
-
-
 

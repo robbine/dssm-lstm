@@ -97,6 +97,9 @@ class LSTMDSSM(object):
                       self.docs_length: docs['texts_length']}
         output_feed = [self.sims]
         scores = (session.run(output_feed, input_feed)[0][0] + 1) / 2
+        # debug
+        print("ground truths: " + str(ground_truths))
+        print("predicts: " + str(scores))
         l = len(ground_truths)
         loss = 0
         for i in range(l):
