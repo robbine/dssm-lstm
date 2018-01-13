@@ -114,7 +114,7 @@ def train(model, sess, queries, docs):
 
 def test(model, sess, queries, docs, ground_truths):
     st, ed, loss = 0, 0, .0
-    lq = len(queries) / (FLAGS.neg_num + 1)
+    lq = len(queries)
     count = 0
     while ed < lq:
         st, ed = ed, ed + FLAGS.batch_size if ed + FLAGS.batch_size < lq else lq
