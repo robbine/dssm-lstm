@@ -88,7 +88,7 @@ def gen_batch_data(data):
 
 def train(model, sess, queries, docs):
     st, ed, loss = 0, 0, .0
-    lq = len(queries) / (FLAGS.neg_num + 1)
+    lq = len(queries)
     count = 0
     while ed < lq:
         st, ed = ed, ed + FLAGS.batch_size if ed + FLAGS.batch_size < lq else lq
@@ -142,14 +142,23 @@ with tf.Session(config=config) as sess:
         data_docs = load_data(FLAGS.data_dir, 'docs.txt')
         vocab, embed = build_vocab(FLAGS.data_dir, data_queries + data_docs)
 
+        # validate data
+        validate_queries = load_data(FLAGS.data_dir, 'validate_queries.txt')
+        validate_docs = load_data(FLAGS.data_dir, 'validate_docs.txt')
+        validate_docs = np.repeat(validate_docs, FLAGS.neg_num + 1)
+        validate_ground_truths = []
+        with open(os.path.join(FLAGS.data_dir, 'validate_ground_truths.txt')) as f:
+            for row in f:
+                validate_ground_truths.append(int(row.strip('\n')))
+
         # test data
         test_queries = load_data(FLAGS.data_dir, 'test_queries.txt')
         test_docs = load_data(FLAGS.data_dir, 'test_docs.txt')
         test_docs = np.repeat(test_docs, FLAGS.neg_num + 1)
-        ground_truths = []
+        test_ground_truths = []
         with open(os.path.join(FLAGS.data_dir, 'test_ground_truths.txt')) as f:
             for row in f:
-                ground_truths.append(int(row.strip('\n')))
+                test_ground_truths.append(int(row.strip('\n')))
 
         model = LSTMDSSM(
             FLAGS.units,
@@ -169,9 +178,11 @@ with tf.Session(config=config) as sess:
             sess.run(op_in)
 
         # debug
-        # test_loss = test(model, sess, test_queries, test_docs, ground_truths)
+        # test_loss = test(model, sess, test_queries, test_docs, test_ground_truths)
 
         summary_writer = tf.summary.FileWriter('%s/log' % FLAGS.train_dir, sess.graph)
+        pre_losses = [1e18] * 3
+        best_val_loss = 0.0
         total_train_time = 0.0
         while model.epoch.eval() < FLAGS.epoch:
             epoch = model.epoch.eval()
@@ -181,23 +192,42 @@ with tf.Session(config=config) as sess:
             data_docs = np.reshape(data_docs, (len(data_queries), -1))
             data_docs = [data_docs[i] for i in random_idxs]
             data_docs = np.reshape(data_docs, len(data_queries) * (FLAGS.neg_num + 1))
+
             start_time = time.time()
             loss = train(model, sess, data_queries, data_docs)
             epoch_time = time.time() - start_time
             total_train_time += epoch_time
 
-            # test loss
-            test_loss = test(model, sess, test_queries, test_docs, ground_truths)
-
             summary = tf.Summary()
             summary.value.add(tag='loss/train', simple_value=loss)
-            summary.value.add(tag='loss/test', simple_value=test_loss)
             cur_lr = model.learning_rate.eval()
             summary.value.add(tag='lr/train', simple_value=cur_lr)
+
+            # validate loss
+            validate_loss = test(model, sess, validate_queries, validate_docs, validate_ground_truths)
+            summary.value.add(tag='loss/dev', simple_value=validate_loss)
+            if validate_loss < best_val_loss:
+                best_val_loss = validate_loss
+                best_epoch = epoch
+                print("best epoch on validate set: %d" % best_epoch)
+
+                # test loss
+                test_loss = test(model, sess, test_queries, test_docs, test_ground_truths)
+                model.saver.save(sess, '%s/checkpoint' % FLAGS.train_dir, global_step=model.global_step)
+                summary.value.add(tag='loss/test', simple_value=test_loss)
+                print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f test loss %.8f" % (
+                    epoch, cur_lr, epoch_time, loss, validate_loss, test_loss))
+            else:
+                print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f" % (
+                    epoch, cur_lr, epoch_time, loss, validate_loss))
+
             summary_writer.add_summary(summary, epoch)
             model.saver.save(sess, '%s/checkpoint' % FLAGS.train_dir, global_step=model.global_step)
-            print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f test loss %.8f" % (
-            epoch, cur_lr, epoch_time, loss, test_loss))
+
+            if loss > max(pre_losses):
+                op = tf.assign(model.learning_rate, cur_lr * 0.5)
+                sess.run(op)
+            pre_losses = pre_losses[1:] + [loss]
         with open(os.path.join(FLAGS.train_dir, FLAGS.time_log_path), 'a') as fp:
             fp.writelines(['total training time: %f\n' % total_train_time, 'last test loss: %.8f' % test_loss])
 

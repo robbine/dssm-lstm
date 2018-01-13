@@ -42,7 +42,7 @@ def create_dataset():
 
     query_num = 10000
     neg_num = 4
-    test_num = 2500
+    test_num = 2500 * 2  # test set and validate set
     random.shuffle(lines)
     test_lines = lines[query_num:int(query_num + test_num / 2)]
     lines = lines[:query_num]
@@ -80,13 +80,24 @@ def create_dataset():
     test_docs = [(' '.join(word_tokenize(row[4])) + '\n') for row in test_lines]
     test_ground_truths = [(row[5] + '\n') for row in test_lines]
 
+    validate_queries = test_queries[:test_num // 4] + test_queries[test_num // 2:test_num * 3 // 4]
+    validate_docs = test_docs[:test_num // 4] + test_docs[test_num // 2:test_num * 3 // 4]
+    validate_ground_truths = test_ground_truths[:test_num // 4] + test_ground_truths[test_num // 2:test_num * 3 // 4]
+    test_docs = test_docs[test_num // 4:test_num // 2] + test_docs[test_num * 3 // 4:-1]
+    test_ground_truths = test_ground_truths[test_num // 4:test_num // 2] + test_ground_truths[test_num * 3 // 4:-1]
+
     with open(os.path.join(data_dir, 'test_queries.txt'), 'w') as f:
         f.writelines(test_queries)
+    with open(os.path.join(data_dir, 'validate_queries.txt'), 'w') as f:
+        f.writelines(validate_queries)
     with open(os.path.join(data_dir, 'test_docs.txt'), 'w') as f:
         f.writelines(test_docs)
+    with open(os.path.join(data_dir, 'validate_docs.test'), 'w') as f:
+        f.writelines(validate_docs)
     with open(os.path.join(data_dir, 'test_ground_truths.txt'), 'w') as f:
         f.writelines(test_ground_truths)
-
+    with open(os.path.join(data_dir, 'validate_ground_truths.txt'), 'w') as f:
+        f.writelines(validate_ground_truths)
 
 if __name__ == '__main__':
     create_dataset()
