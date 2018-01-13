@@ -182,7 +182,7 @@ with tf.Session(config=config) as sess:
 
         summary_writer = tf.summary.FileWriter('%s/log' % FLAGS.train_dir, sess.graph)
         pre_losses = [1e18] * 3
-        best_val_loss = 0.0
+        best_val_loss = 100
         total_train_time = 0.0
         while model.epoch.eval() < FLAGS.epoch:
             epoch = model.epoch.eval()
@@ -217,12 +217,10 @@ with tf.Session(config=config) as sess:
                 summary.value.add(tag='loss/test', simple_value=test_loss)
                 print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f test loss %.8f" % (
                     epoch, cur_lr, epoch_time, loss, validate_loss, test_loss))
+                summary_writer.add_summary(summary, epoch)
             else:
                 print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f" % (
                     epoch, cur_lr, epoch_time, loss, validate_loss))
-
-            summary_writer.add_summary(summary, epoch)
-            model.saver.save(sess, '%s/checkpoint' % FLAGS.train_dir, global_step=model.global_step)
 
             if loss > max(pre_losses):
                 op = tf.assign(model.learning_rate, cur_lr * 0.5)

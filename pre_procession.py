@@ -93,7 +93,7 @@ def create_dataset():
         f.writelines(validate_queries)
     with open(os.path.join(data_dir, 'test_docs.txt'), 'w') as f:
         f.writelines(test_docs)
-    with open(os.path.join(data_dir, 'validate_docs.test'), 'w') as f:
+    with open(os.path.join(data_dir, 'validate_docs.txt'), 'w') as f:
         f.writelines(validate_docs)
     with open(os.path.join(data_dir, 'test_ground_truths.txt'), 'w') as f:
         f.writelines(test_ground_truths)
