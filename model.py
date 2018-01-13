@@ -63,6 +63,7 @@ class LSTMDSSM(object):
         self.sims = [(self.prods[i] / (self.queries_norm * self.docs_norm[i])) for i in range(neg_num + 1)]  # shape: (neg_num + 1)*batch
         self.sims = tf.convert_to_tensor(self.sims)
         self.gamma = tf.Variable(initial_value=1.0, expected_shape=[], dtype=tf.float32)  # scaling factor according to the paper
+        self.origin_sims = self.sims
         self.sims = self.sims * self.gamma
         self.prob = tf.nn.softmax(self.sims, dim=0)  # shape: (neg_num + 1)*batch
         self.hit_prob = tf.transpose(self.prob[0])
@@ -95,23 +96,20 @@ class LSTMDSSM(object):
                       self.queries_length: queries['texts_length'],
                       self.docs: docs['texts'],
                       self.docs_length: docs['texts_length']}
-        output_feed = [self.sims]
+        output_feed = [self.origin_sims]
         scores = (session.run(output_feed, input_feed)[0][0] + 1) / 2
         # debug
-        print("ground truths: " + str(ground_truths))
-        print("predicts: " + str(scores))
+        # print("ground truths: " + str(ground_truths))
+        # if max(ground_truths) == 0:
+        #     print("predicts for dissimilar pairs: " + str(scores))
         l = len(ground_truths)
         loss = 0
         for i in range(l):
             predict = scores[i]
             ground_truth = ground_truths[i]
-            predict = max([min([predict, 1 - 1e-15]), 1e-15])
+            predict = min([max([predict, 1e-15]), 1 - 1e-15])
             if ground_truth == 0:
                 loss += math.log(1 - predict)
             else:
                 loss += math.log(predict)
         return -loss / l
-
-
-
-

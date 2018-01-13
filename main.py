@@ -115,6 +115,8 @@ def train(model, sess, queries, docs):
 def test(model, sess, queries, docs, ground_truths):
     st, ed, loss = 0, 0, .0
     lq = len(queries)
+    # debug
+    # lq = len(queries) // 2 
     count = 0
     while ed < lq:
         st, ed = ed, ed + FLAGS.batch_size if ed + FLAGS.batch_size < lq else lq
@@ -222,8 +224,8 @@ with tf.Session(config=config) as sess:
                 print("epoch %d learning rate %.10f epoch-time %.4f loss %.8f validate loss %.8f" % (
                     epoch, cur_lr, epoch_time, loss, validate_loss))
             # debug       
-            test_loss = test(model, sess, test_queries, test_docs, test_ground_truths)
-            print("test loss for debug: %.8f" % test_loss)
+            # test_loss = test(model, sess, test_queries, test_docs, test_ground_truths)
+            # print("test loss for debug: %.8f" % test_loss)
 
             if loss > max(pre_losses):
                 op = tf.assign(model.learning_rate, cur_lr * 0.5)
