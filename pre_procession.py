@@ -83,8 +83,9 @@ def create_dataset():
     validate_queries = test_queries[:test_num // 4] + test_queries[test_num // 2:test_num * 3 // 4]
     validate_docs = test_docs[:test_num // 4] + test_docs[test_num // 2:test_num * 3 // 4]
     validate_ground_truths = test_ground_truths[:test_num // 4] + test_ground_truths[test_num // 2:test_num * 3 // 4]
-    test_docs = test_docs[test_num // 4:test_num // 2] + test_docs[test_num * 3 // 4:-1]
-    test_ground_truths = test_ground_truths[test_num // 4:test_num // 2] + test_ground_truths[test_num * 3 // 4:-1]
+    test_queries = test_queries[test_num // 4:test_num // 2] + test_queries[test_num * 3 // 4:]
+    test_docs = test_docs[test_num // 4:test_num // 2] + test_docs[test_num * 3 // 4:]
+    test_ground_truths = test_ground_truths[test_num // 4:test_num // 2] + test_ground_truths[test_num * 3 // 4:]
 
     with open(os.path.join(data_dir, 'test_queries.txt'), 'w') as f:
         f.writelines(test_queries)
