@@ -85,7 +85,7 @@ class LSTMDSSMTEXTCNN(object):
             'W',
             shape=[self.num_filters_total * 2, 1],
             initializer=tf.contrib.layers.xavier_initializer())
-        b = tf.Variable(tf.constant(0, shape=[1]), name='b')
+        b = tf.Variable(tf.constant(0, shape=[1]), name='b', dtype=tf.float32)
         l2_loss += tf.nn.l2_loss(W)
         l2_loss += tf.nn.l2_loss(b)
         arr = np.zeros([1,neg_num+1])
