@@ -80,7 +80,7 @@ class LSTMDSSMTEXTCNN(object):
         conv_queries=self.conv_relu_pool_dropout(self.embed_queries_expanded, name_scope_prefix="s1") #[None,num_filters_total]
         #2.2 get features of sentence2
         conv_docs =[self.conv_relu_pool_dropout(embed_doc_expanded, name_scope_prefix="s2") for embed_doc_expanded in self.embed_docs_expanded]  # [None,num_filters_total]
-        l2_loss = tf.constant(0)
+        l2_loss = tf.constant(0, dtype=tf.float32)
         W = tf.get_variable(
             'W',
             shape=[self.num_filters_total * 2, 1],
