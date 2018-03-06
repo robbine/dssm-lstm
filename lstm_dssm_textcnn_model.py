@@ -22,14 +22,15 @@ class LSTMDSSMTEXTCNN(object):
                  drop_out=0.5,
                  neg_num=4,
                  gradient_clip_threshold=5.0,
-                 filter_sizes=[2],
+                 filter_sizes=[3,4,5],
                  num_filters=128,
                  sequence_length=30,
                  l2_reg_lambda=0.0):
-        self.queries = tf.placeholder(dtype=tf.string, shape=[None, None])  # shape: batch*len
-        self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None])  # shape: batch
-        self.docs = tf.placeholder(dtype=tf.string, shape=[neg_num + 1, None, None])  # shape: (neg_num + 1)*batch*len
-        self.docs_length = tf.placeholder(dtype=tf.int32, shape=[neg_num + 1, None])  # shape: batch*(neg_num + 1)
+        self.queries = tf.placeholder(dtype=tf.string, shape=[None, None], name='queries')  # shape: batch*len
+        self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None], name='queries_length')  # shape: batch
+        self.docs = tf.placeholder(dtype=tf.string, shape=[neg_num + 1, None, None], name='docs')  # shape: (neg_num + 1)*batch*len
+        self.docs_length = tf.placeholder(dtype=tf.int32, shape=[neg_num + 1, None], name='docs_length')  # shape: (neg_num + 1)*batch
+
         self.dropout_keep_prob=tf.placeholder(tf.float32,name="dropout_keep_prob")
         self.filter_sizes=filter_sizes # it is a list of int. e.g. [3,4,5]
         self.embed_size=embed.shape[1]
