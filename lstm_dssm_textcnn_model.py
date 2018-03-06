@@ -24,7 +24,6 @@ class LSTMDSSMTEXTCNN(object):
                  gradient_clip_threshold=5.0,
                  filter_sizes=[3,4,5],
                  num_filters=128,
-                 sequence_length=30,
                  l2_reg_lambda=0.0):
         self.queries = tf.placeholder(dtype=tf.string, shape=[None, None], name='queries')  # shape: batch*len
         self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None], name='queries_length')  # shape: batch
@@ -36,7 +35,6 @@ class LSTMDSSMTEXTCNN(object):
         self.embed_size=embed.shape[1]
         self.initializer = tf.random_normal_initializer(stddev=0.1)
         self.num_filters = num_filters
-        self.sequence_length=sequence_length
         self.num_filters_total=self.num_filters * len(filter_sizes) #how many filters totally.
         self.drop_out = drop_out
 
@@ -143,7 +141,7 @@ class LSTMDSSMTEXTCNN(object):
                 # ====>. max-pooling.  value: A 4-D `Tensor` with shape `[batch, height, width, channels]
                 #                  ksize: A list of ints that has length >= 4.  The size of the window for each dimension of the input tensor.
                 #                  strides: A list of ints that has length >= 4.  The stride of the sliding window for each dimension of the input tensor.
-                pooled = tf.nn.max_pool(h, ksize=[1, self.sequence_length - filter_size + 1, 1, 1],
+                pooled = tf.nn.max_pool(h, ksize=[1, sentence_embeddings_expanded.shape[1] - filter_size + 1, 1, 1],
                                         strides=[1, 1, 1, 1], padding='VALID',
                                         name="pool")  # shape:[batch_size, 1, 1, num_filters].max_pool:performs the max pooling on the input.
                 pooled_outputs.append(pooled)
