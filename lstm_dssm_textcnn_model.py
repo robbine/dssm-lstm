@@ -30,6 +30,7 @@ class LSTMDSSMTEXTCNN(object):
         self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None], name='queries_length')  # shape: batch
         self.docs = tf.placeholder(dtype=tf.string, shape=[neg_num + 1, None, None], name='docs')  # shape: (neg_num + 1)*batch*len
         self.docs_length = tf.placeholder(dtype=tf.int32, shape=[neg_num + 1, None], name='docs_length')  # shape: (neg_num + 1)*batch
+        self.labels = tf.placeholder(dtype=tf.float32, shape=[None, neg_num + 1], name='labels')
 
         self.dropout_keep_prob=tf.placeholder(tf.float32,name="dropout_keep_prob")
         self.filter_sizes=filter_sizes # it is a list of int. e.g. [3,4,5]
@@ -89,10 +90,8 @@ class LSTMDSSMTEXTCNN(object):
         b = tf.Variable(tf.constant(0, shape=[1], dtype=tf.float32), name='b')
         l2_loss += tf.nn.l2_loss(W)
         l2_loss += tf.nn.l2_loss(b)
-        arr = np.zeros([1,neg_num+1])
-        arr[:,0] =1
         self.scores = tf.concat([tf.nn.xw_plus_b(tf.concat([conv_queries, conv_doc], axis=1), W, b, name='logit') for conv_doc in conv_docs], axis=1, name='scores')
-        losses = tf.nn.softmax_cross_entropy_with_logits(labels = tf.constant(arr), logits = self.scores) #  only named arguments accepted
+        losses = tf.nn.softmax_cross_entropy_with_logits(labels = self.labels, logits = self.scores) #  only named arguments accepted
         self.cnn_loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
 
         self.params = tf.trainable_variables()
@@ -159,22 +158,24 @@ class LSTMDSSMTEXTCNN(object):
             h_drop = tf.nn.dropout(h_pool_flat, keep_prob=self.dropout_keep_prob)  # [None,num_filters_total]
         return h_drop
 
-    def train_step(self, session, queries, docs):
+    def train_step(self, session, queries, docs, labels):
         input_feed = {self.queries: queries['texts'],
                       self.queries_length: queries['texts_length'],
                       self.docs: docs['texts'],
                       self.docs_length: docs['texts_length'],
-                      self.dropout_keep_prob: self.drop_out}
+                      self.dropout_keep_prob: self.drop_out,
+                      self.labels: labels}
 
         output_feed = [self.loss, self.update, self.states_q, self.states_d, self.prob, self.hit_prob]
         return session.run(output_feed, input_feed)
 
-    def validate_step(self, session, queries, docs):
+    def validate_step(self, session, queries, docs, labels):
         input_feed = {self.queries: queries['texts'],
                       self.queries_length: queries['texts_length'],
                       self.docs: docs['texts'],
                       self.docs_length: docs['texts_length'],
-                      self.dropout_keep_prob: 1.0}
+                      self.dropout_keep_prob: 1.0,
+                      self.labels: labels}
         output_feed = [self.loss, self.prob]
         return session.run(output_feed, input_feed)
 
