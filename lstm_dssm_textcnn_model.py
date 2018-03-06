@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow.python.ops.nn import dynamic_rnn
 from tensorflow.contrib.lookup.lookup_ops import MutableHashTable
 from cells import SimpleLSTMCell
+import numpy as np
 import math
 PAD_ID = 0
 UNK_ID = 1
@@ -23,7 +24,8 @@ class LSTMDSSMTEXTCNN(object):
                  gradient_clip_threshold=5.0,
                  filter_sizes=[2],
                  num_filters=128,
-                 sequence_length=30):
+                 sequence_length=30,
+                 l2_reg_lambda=0.0):
         self.queries = tf.placeholder(dtype=tf.string, shape=[None, None])  # shape: batch*len
         self.queries_length = tf.placeholder(dtype=tf.int32, shape=[None])  # shape: batch
         self.docs = tf.placeholder(dtype=tf.string, shape=[neg_num + 1, None, None])  # shape: (neg_num + 1)*batch*len
@@ -78,11 +80,21 @@ class LSTMDSSMTEXTCNN(object):
         conv_queries=self.conv_relu_pool_dropout(self.embed_queries_expanded, name_scope_prefix="s1") #[None,num_filters_total]
         #2.2 get features of sentence2
         conv_docs =[self.conv_relu_pool_dropout(embed_doc_expanded, name_scope_prefix="s2") for embed_doc_expanded in self.embed_docs_expanded]  # [None,num_filters_total]
-        self.cnn_prob, self.cnn_hit_prob = self.cosine_similarity(conv_queries, conv_docs)
-        self.cnn_loss = -tf.reduce_mean(tf.log(self.cnn_hit_prob))
+        l2_loss = tf.constant(0)
+        W = tf.get_variable(
+            'W',
+            shape=[self.num_filters_total * 2, 1],
+            initializer=tf.contrib.layers.xavier_initializer())
+        b = tf.Variable(tf.constant(0, shape=[1]), name='b')
+        l2_loss += tf.nn.l2_loss(W)
+        l2_loss += tf.nn.l2_loss(b)
+        arr = np.zeros([1,neg_num+1])
+        arr[:,0] =1
+        self.scores = tf.concat([tf.nn.xw_plus_b(tf.concat([conv_queries, conv_doc], axis=1), W, b, name='logit') for conv_doc in conv_docs], axis=1, name='scores')
+        losses = tf.nn.softmax_cross_entropy_with_logits(labels = tf.constant(arr), logits = self.scores) #  only named arguments accepted
+        self.cnn_loss = tf.reduce_mean(losses) + l2_reg_lambda * l2_loss
 
         self.params = tf.trainable_variables()
-        #opt = tf.train.MomentumOptimizer(learning_rate=self.learning_rate, momentum=self.momentum, use_nesterov=True)  # use Nesterov's method, according to the paper
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         gradients = tf.gradients(self.loss + self.cnn_loss, self.params)
         clipped_gradients, self.gradient_norm = tf.clip_by_global_norm(gradients, gradient_clip_threshold)
@@ -140,8 +152,7 @@ class LSTMDSSMTEXTCNN(object):
         #         x12_1=tf.concat(x,1)---->x12_1' shape;[3,6]
         h_pool = tf.concat(pooled_outputs,
                            3)  # shape:[batch_size, 1, 1, num_filters_total]. tf.concat=>concatenates tensors along one dimension.where num_filters_total=num_filters_1+num_filters_2+num_filters_3
-        h_pool_flat = tf.reshape(h_pool, [-1,
-                                          self.num_filters_total])  # shape should be:[None,num_filters_total]. here this operation has some result as tf.sequeeze().e.g. x's shape:[3,3];tf.reshape(-1,x) & (3, 3)---->(1,9)
+        h_pool_flat = tf.reshape(h_pool, [-1, self.num_filters_total])  # shape should be:[None,num_filters_total]. here this operation has some result as tf.sequeeze().e.g. x's shape:[3,3];tf.reshape(-1,x) & (3, 3)---->(1,9)
         # 3.=====>add dropout: use tf.nn.dropout
         with tf.name_scope("dropout"):
             h_drop = tf.nn.dropout(h_pool_flat, keep_prob=self.dropout_keep_prob)  # [None,num_filters_total]
